@@ -1,0 +1,172 @@
+--Cleaning Data in SQL poject
+Select * 
+from PortflioProject.dbo.NashvileHousing$
+
+--Sales Data Standardise
+Select SaleDateConverted, Convert(Date,SaleDate)
+from dbo.NashvileHousing$
+
+Update dbo.NashvileHousing$
+Set SaleDateConverted = Convert(Date,SaleDate)
+
+Alter table dbo.NashvileHousing$
+Add SaleDateConverted Date
+
+
+--Populate Property Address date
+Select PropertyAddress
+from dbo.NashvileHousing$
+Where PropertyAddress is null
+
+Select *
+from dbo.NashvileHousing$
+--Where PropertyAddress is null
+Order by ParcelID
+
+Select a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, ISNULL(a.PropertyAddress,b.PropertyAddress)
+From dbo.NashvileHousing$ a
+Join dbo.NashvileHousing$ b
+on a.ParcelID = b.ParcelID
+Where a.PropertyAddress is null
+And a.UniqueID <> b.UniqueID
+
+Update a
+Set PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
+From dbo.NashvileHousing$ a
+Join dbo.NashvileHousing$ b
+on a.ParcelID = b.ParcelID
+Where a.PropertyAddress is null
+And a.UniqueID <> b.UniqueID
+
+
+--Breakin Out Address into Individual Column(Address and City)
+Select PropertyAddress
+From dbo.NashvileHousing$
+
+Select 
+SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1) as Address,
+SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) +1, Len(PropertyAddress)) as Address
+
+from dbo.NashvileHousing$
+
+
+Alter table dbo.NashvileHousing$
+Add PropertySplitAddress Nvarchar(255)
+
+Update dbo.NashvileHousing$
+Set PropertySplitAddress = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress) -1)
+
+Alter table dbo.NashvileHousing$
+Add PropertySplitCity Nvarchar(255)
+
+Update dbo.NashvileHousing$
+Set PropertySplitCity = SUBSTRING(PropertyAddress, CHARINDEX(',', PropertyAddress) +1, Len(PropertyAddress)) 
+
+Select *
+From dbo.NashvileHousing$
+
+
+
+Select OwnerAddress
+From dbo.NashvileHousing$
+
+Select
+PARSENAME(Replace(OwnerAddress, ',', '.'), 3),
+PARSENAME(Replace(OwnerAddress, ',', '.'), 2),
+PARSENAME(Replace(OwnerAddress, ',', '.'), 1)
+From dbo.NashvileHousing$
+
+Alter table dbo.NashvileHousing$
+Add OwnerSplitAddress Nvarchar(255)
+									   
+Update dbo.NashvileHousing$
+Set OwnerSplitAddress = PARSENAME(Replace(OwnerAddress, ',', '.'), 3)
+									   
+Alter table dbo.NashvileHousing$
+Add OwnerSplitCity Nvarchar(255)
+									   
+Update dbo.NashvileHousing$
+Set OwnerSplitCity =PARSENAME(Replace(OwnerAddress, ',', '.'), 2)
+
+Alter table dbo.NashvileHousing$
+Add OwnerSplitState Nvarchar(255)
+
+Update dbo.NashvileHousing$
+Set OwnerSplitState =PARSENAME(Replace(OwnerAddress, ',', '.'), 1)
+
+
+Select *
+From dbo.NashvileHousing$
+
+
+
+--Change Y and N to Yes and No in SoldAsVacant
+Select Distinct (SoldAsVacant),
+Count(SoldAsVacant)	as CountofSoldAsVacant
+From dbo.NashvileHousing$
+Group by SoldAsVacant
+Order by 2						  
+
+Select SoldAsVacant,
+	Case When SoldAsVacant = 'Y' Then 'Yes'
+		 When SoldAsVacant = 'N' Then 'No'
+		 Else SoldAsVacant
+		 End
+From dbo.NashvileHousing$
+
+Update dbo.NashvileHousing$
+Set SoldAsVacant = Case When SoldAsVacant = 'Y' Then 'Yes'
+		When SoldAsVacant = 'N' Then 'No'
+		Else SoldAsVacant
+	    End
+
+
+--Remove Duplicate
+With RowNumCTE As(
+Select *, 
+	ROW_NUMBER() Over (
+	Partition by ParcelID,
+			 PropertyAddress,
+			 SalePrice,
+			 SaleDate,
+			 LegalReference
+			 Order by
+				UniqueID
+				) row_num
+From dbo.NashvileHousing$
+)
+Delete
+From RowNumCTE
+Where row_num > 1
+--Order by PropertyAddress
+
+
+With RowNumCTE As(
+Select *, 
+ROW_NUMBER() Over (
+	Partition by ParcelID,
+				 PropertyAddress,
+				 SalePrice,
+				 SaleDate,
+				 LegalReference
+				  Order by
+				  UniqueID
+				) row_num
+From dbo.NashvileHousing$
+)
+Select *
+From RowNumCTE
+Where row_num > 1
+--Order by PropertyAddress
+
+
+
+--Delete Unused Columns
+Select *
+From dbo.NashvileHousing$
+
+Alter Table dbo.NashvileHousing$
+Drop Column OwnerAddress, PropertyAddress, TaxDistrict , SaleDate
+
+
+
